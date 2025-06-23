@@ -14,9 +14,9 @@
 <br> </br>
 - İlk olarak bilgisayarına [Pyhton](https://www.python.org/ftp/python/3.13.5/python-3.13.5-amd64.exe) `(en düşük 3.10)` indir.
 
--Sonrasında token.txt dosyalarına alt alta teker teker girin.
+- Sonrasında token.txt dosyasına bot tokenlerini alt alta teker teker girin.
 
-- sonrasında modülleri kurmak için terminale aşşağıdaki kodu yaz.
+- Ve onrasında modülleri kurmak için terminale aşşağıdaki kodu yaz.
 
 ```diff
 pip install -U discord.py
