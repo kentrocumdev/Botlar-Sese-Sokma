@@ -23,6 +23,13 @@ pip install -U discord.py
 pip install -U pynacl
 pip install -U colorama
 ```
+- Bu kadar, sonra terminale
+
+  ```diff
+  py sesdurum.py
+  ```
+
+  yaz ve toolu çalıştır
 
 <br> </br>
 <br> </br>
