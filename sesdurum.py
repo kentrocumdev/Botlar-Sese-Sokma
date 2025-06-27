@@ -63,28 +63,35 @@ def run_client_process(token, channel_id, status_str, activity_type_str, activit
     class CustomVoiceClient(discord.Client):
         async def on_ready(self):
             print(f"{self.user} olarak giriş yapıldı.")
-            if activity_type and activity_name:
-                if activity_type == discord.ActivityType.streaming:
-                    await self.change_presence(
-                        status=status,
-                        activity=discord.Streaming(name=activity_name, url=stream_url or "https://twitch.tv/username")
-                    )
-                else:
-                    await self.change_presence(
-                        status=status,
-                        activity=discord.Activity(type=activity_type, name=activity_name)
-                    )
-                print(f"Durum ayarlandı: {status}, {activity_type.name} {activity_name}")
-            else:
-                await self.change_presence(status=status, activities=[])
-                print("Aktivite ayarlanmadı.")
 
-            channel = self.get_channel(int(channel_id))
-            if channel and isinstance(channel, discord.VoiceChannel):
-                await channel.connect()
-                print(f"{self.user} ses kanalına katıldı: {channel.name}")
-            else:
-                print("Ses kanalı bulunamadı veya yanlış ID.")
+            try:
+                if activity_type and activity_name:
+                    if activity_type == discord.ActivityType.streaming:
+                        await self.change_presence(
+                            status=status,
+                            activity=discord.Streaming(name=activity_name, url=stream_url or "https://twitch.tv/username")
+                        )
+                    else:
+                        await self.change_presence(
+                            status=status,
+                            activity=discord.Activity(type=activity_type, name=activity_name)
+                        )
+                    print(f"Durum ayarlandı: {status}, {activity_type.name} {activity_name}")
+                else:
+                    await self.change_presence(status=status, activities=[])
+                    print("Aktivite ayarlanmadı.")
+            except Exception as e:
+                print(f"Durum ayarlanırken hata oluştu: {e}")
+
+            try:
+                channel = self.get_channel(int(channel_id))
+                if channel and isinstance(channel, discord.VoiceChannel):
+                    await channel.connect()
+                    print(f"{self.user} ses kanalına katıldı: {channel.name}")
+                else:
+                    print("Ses kanalı bulunamadı veya yanlış ID.")
+            except Exception as e:
+                print(f"Ses kanalına katılırken hata: {e}")
 
         async def start_client(self):
             try:
