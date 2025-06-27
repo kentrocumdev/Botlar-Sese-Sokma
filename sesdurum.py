@@ -34,39 +34,7 @@ intents.voice_states = True
 intents.presences = True
 intents.members = True
 
-class VoiceJoinClient(discord.Client):
-    def __init__(self, token, channel_id, status=None, activity_type=None, activity_name=None):
-        super().__init__(intents=intents)
-        self.token = token
-        self.channel_id = int(channel_id)
-        self.status = status
-        self.activity_type = activity_type
-        self.activity_name = activity_name
-
-    async def on_ready(self):
-        print(f"{self.user} olarak giriş yapıldı.")
-
-        if self.status and self.activity_type and self.activity_name:
-            await self.change_presence(
-                status=self.status,
-                activity=discord.Activity(type=self.activity_type, name=self.activity_name)
-            )
-            print(f"Durum ayarlandı: {self.status}, {self.activity_type.name} {self.activity_name}")
-
-        channel = self.get_channel(self.channel_id)
-        if channel and isinstance(channel, discord.VoiceChannel):
-            await channel.connect()
-            print(f"{self.user} ses kanalına katıldı: {channel.name}")
-        else:
-            print("Ses kanalı bulunamadı veya yanlış ID.")
-
-    async def start_client(self):
-        try:
-            await self.start(self.token)
-        except Exception as e:
-            print(f"{self.token[:10]}... hatalı olabilir: {e}")
-
-def run_client_process(token, channel_id, status_str, activity_type_str, activity_name):
+def run_client_process(token, channel_id, status_str, activity_type_str, activity_name, stream_url=None):
     import discord
 
     status_map = {
@@ -75,17 +43,56 @@ def run_client_process(token, channel_id, status_str, activity_type_str, activit
         "dnd": discord.Status.dnd,
         "invisible": discord.Status.invisible
     }
+
     activity_map = {
         "playing": discord.ActivityType.playing,
         "listening": discord.ActivityType.listening,
         "watching": discord.ActivityType.watching,
-        "competing": discord.ActivityType.competing
+        "competing": discord.ActivityType.competing,
+        "streaming": discord.ActivityType.streaming
     }
 
     status = status_map.get(status_str, discord.Status.online)
-    activity_type = activity_map.get(activity_type_str, discord.ActivityType.playing)
 
-    client = VoiceJoinClient(token, channel_id, status, activity_type, activity_name)
+    if activity_type_str == "none":
+        activity_type = None
+        activity_name = None
+    else:
+        activity_type = activity_map.get(activity_type_str, discord.ActivityType.playing)
+
+    class CustomVoiceClient(discord.Client):
+        async def on_ready(self):
+            print(f"{self.user} olarak giriş yapıldı.")
+            if activity_type and activity_name:
+                if activity_type == discord.ActivityType.streaming:
+                    await self.change_presence(
+                        status=status,
+                        activity=discord.Streaming(name=activity_name, url=stream_url or "https://twitch.tv/username")
+                    )
+                else:
+                    await self.change_presence(
+                        status=status,
+                        activity=discord.Activity(type=activity_type, name=activity_name)
+                    )
+                print(f"Durum ayarlandı: {status}, {activity_type.name} {activity_name}")
+            else:
+                await self.change_presence(status=status, activities=[])
+                print("Aktivite ayarlanmadı.")
+
+            channel = self.get_channel(int(channel_id))
+            if channel and isinstance(channel, discord.VoiceChannel):
+                await channel.connect()
+                print(f"{self.user} ses kanalına katıldı: {channel.name}")
+            else:
+                print("Ses kanalı bulunamadı veya yanlış ID.")
+
+        async def start_client(self):
+            try:
+                await self.start(token)
+            except Exception as e:
+                print(f"{token[:10]}... hatalı olabilir: {e}")
+
+    client = CustomVoiceClient(intents=intents)
     asyncio.run(client.start_client())
 
 async def voice_joiner():
@@ -109,22 +116,32 @@ async def voice_joiner():
     status_str = status_options.get(status_choice, "online")
 
     activity_options = {
+        "0": "none",
         "1": "playing",
         "2": "listening",
         "3": "watching",
-        "4": "competing"
+        "4": "competing",
+        "5": "streaming"
     }
     print(Fore.RED + """
 🎮 Aktivite Türü:
+0 - Aktivite Yok
 1 - Playing
 2 - Listening
 3 - Watching
 4 - Competing
+5 - Twitch Yayını
 """ + Style.RESET_ALL)
-    activity_choice = input("Seçim (1-4): ").strip()
+    activity_choice = input("Seçim (0-5): ").strip()
     activity_type_str = activity_options.get(activity_choice, "playing")
 
-    activity_name = input(Fore.RED + "📝 Aktivite mesajı: " + Style.RESET_ALL)
+    activity_name = None
+    stream_url = None
+
+    if activity_type_str != "none":
+        activity_name = input(Fore.RED + "📝 Aktivite mesajı: " + Style.RESET_ALL)
+        if activity_type_str == "streaming":
+            stream_url = input(Fore.RED + "📺 Twitch yayın linki: " + Style.RESET_ALL)
 
     print(Fore.RED + "\nTokenleri nasıl almak istersin?" + Style.RESET_ALL)
     print("1. token.txt dosyasından al")
@@ -158,7 +175,7 @@ async def voice_joiner():
     for token in tokens:
         p = multiprocessing.Process(
             target=run_client_process,
-            args=(token, channel_id, status_str, activity_type_str, activity_name)
+            args=(token, channel_id, status_str, activity_type_str, activity_name, stream_url)
         )
         p.start()
         processes.append(p)
@@ -190,5 +207,5 @@ def main():
             wait_and_clear()
 
 if __name__ == "__main__":
-    multiprocessing.set_start_method("spawn")  # Windows uyumluluğu için
+    multiprocessing.set_start_method("spawn")
     main()
